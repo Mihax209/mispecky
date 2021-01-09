@@ -69,13 +69,13 @@
 
 /* EQ CONFIG */
 #define EQ_BANDS    (14)
-#define NOISECOMP   (120)
+#define NOISECOMP   (65)
 #define EQ_DELTA    (30)
 
 /* LED CONFIG */
 #define ROWS                (24)
 #define COLUMNS             (1)
-#define DEFAULT_BRIGHT      (50)
+#define DEFAULT_BRIGHT      (3)
 #define BRIGHT_HYSTERESIS   (5)
 
 enum color_effect {
@@ -85,7 +85,8 @@ enum color_effect {
 
 /* GLOBAL VARIABLES */
 Si5351mcu Si;
-int MSGEQ_Bands[EQ_BANDS];
+int MSGEQ_Bands[EQ_BANDS] = {0};
+int MSGEQ_Bands_prev[EQ_BANDS] = {0};
 bool lit_matrix[COLUMNS][ROWS];
 struct CRGB color_matrix[COLUMNS][ROWS];
 struct CRGB fastLED_matrix[COLUMNS*ROWS];
@@ -129,7 +130,7 @@ void setup()
 unsigned long loop_counter = 0;
 void loop()
 {
-    checkAndUpdateBrightness();
+    // checkAndUpdateBrightness();
     readMSGEQ7();
     updateLEDMatrix();
 
@@ -148,11 +149,12 @@ void loop()
 void checkAndUpdateBrightness()
 {
     int new_brightness = min(100, analogRead(BRIGHT_PIN) / 10);
+    updateBrightness(new_brightness);
 
-    if ((new_brightness > curr_brightness + BRIGHT_HYSTERESIS) ||
-        (new_brightness < curr_brightness - BRIGHT_HYSTERESIS)) {
-        updateBrightness(new_brightness);
-    }
+    // if ((new_brightness > curr_brightness + BRIGHT_HYSTERESIS) ||
+    //     (new_brightness < curr_brightness - BRIGHT_HYSTERESIS)) {
+    //     updateBrightness(new_brightness);
+    // }
 }
 
 void updateBrightness(int brightness) 
@@ -193,9 +195,8 @@ void updateLEDMatrix()
             Serial.print("Column height: ");
             Serial.println(height);
         }
-        if (shouldPrint())
         for (int row = 0; row < ROWS; ++row) {
-            lit_matrix[col][row] = (row <= height);
+            lit_matrix[col][row] = (row < height);
         }
     }
 
@@ -206,11 +207,42 @@ void updateLEDMatrix()
                 lit_matrix[col][row] ? color_matrix[col][row] : CRGB::Black;
         }
     }
+
+    FastLED.show();
 }
 
 /* TODO: THIS WILL NEED TO BE CHANGED ACCRODING TO AMOUNT OF COLUMNS */
+// int getColumnHeight(int column) {
+//     return min(ROWS, MSGEQ_Bands[8] / EQ_DELTA);
+// }
+
+#define EQ_ALPHA    (float)(0)
 int getColumnHeight(int column) {
-    return min(ROWS, MSGEQ_Bands[3] / EQ_DELTA);
+    /* This is the (sort of) VU equivalent version */
+    int prev_sum = 0;
+    int sum = 0;
+    float current, previous, value = 0;
+    float alpha = min(0.5, max(0, (float)analogRead(BRIGHT_PIN) / 2.0 / 1023.0));
+
+    for (int i = 0; i < EQ_BANDS; ++i) {
+        sum += MSGEQ_Bands[i];
+    }
+    for (int i = 0; i < EQ_BANDS; ++i) {
+        prev_sum += MSGEQ_Bands_prev[i];
+    }
+    previous = (((float)prev_sum / 14.0) / 5.0);
+    current = (((float)sum / 14.0) / 5.0);
+    value = (current * alpha) + (previous * (1.0-alpha));
+
+    if (shouldPrint()) {
+        Serial.print("alpha: ");Serial.println(alpha);
+        Serial.print("prev_sum: ");Serial.println(prev_sum);
+        Serial.print("sum: ");Serial.println(sum);
+        Serial.print("previous: ");Serial.println(previous);
+        Serial.print("current: ");Serial.println(current);
+        Serial.print("value: ");Serial.println(value);
+    }
+    return min(ROWS, (int)value);
 }
 
 void readMSGEQ7(void)
@@ -224,10 +256,12 @@ void readMSGEQ7(void)
     {                                                  // Loop that will increment counter that AnalogRead uses to determine which band to store data for.
         digitalWrite(STROBE_PIN, LOW);                 // Re-Set Strobe to LOW on each iteration of loop.
         delayMicroseconds(30);                         // Necessary delay required by MSGEQ7 for proper timing.
+        MSGEQ_Bands_prev[band] = MSGEQ_Bands[band];
         MSGEQ_Bands[band] = max(0, analogRead(MSGEQ0_PIN) - NOISECOMP);
         DEBUG_DO(printBandValue(band, MSGEQ_Bands[band]));
 
         ++band;
+        MSGEQ_Bands_prev[band] = MSGEQ_Bands[band];
         MSGEQ_Bands[band] = max(0, analogRead(MSGEQ1_PIN) - NOISECOMP);
         DEBUG_DO(printBandValue(band, MSGEQ_Bands[band]));
 
@@ -261,6 +295,9 @@ void printBandValue(int band, int value)
         else
             Serial.print(":");
         Serial.print(MSGEQ_Bands[band]);
+        Serial.print(" (");
+        Serial.print(MSGEQ_Bands_prev[band]);
+        Serial.print(")");
         Serial.println();
     }
 }
