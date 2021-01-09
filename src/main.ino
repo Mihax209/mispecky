@@ -1,50 +1,8 @@
-///// Project: 14 Band Spectrum Analyzer using WS2812B addressable "Smart" LED's and MSGEQ7 band-slicing IC's
-///// Programmed and tested by Daniel Perez, A.K.A GeneratorLabs
-///// Location: Myrtle Beach, South Carolina, United States of America
-//N// E-Mail: generatorlabs@gmail.com
-//O// Date: June 01, 2019
-//E// Revision: Ver 2.3
-//T// Target Platform: Arduino Mega2650 with SpeckyBoard
-//E// License: This program is free software. You can redistribute it and/or modify it under the terms of the GNU General Public License as published by
-//S// the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-///// This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-///// FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-///// Credits: See acknowledgements & credits section below
-/*
- ///// More information about this project, the necessary circuits and a source for parts-kits can be obtained by email (generatorlabs@gmail.com)
- ///// The notes & comments do not consume Arduino memory. They automatically get stripped out before compiled program is uploaded to Arduino.
- ///// Please keep notes in tact for future reference.
- /////
- ///// --- CREDITS & ACKNOWLEDGEMENTS ---
- ///// This sketch is based on a similar project and code from Denis Lanfrit and I respectfully thank Denis for his open source efforts.
- //N// The original code has been modified to allow a scalable platform with many more bands.
- //O// The library Si5351mcu is being utilized for programming masterclock IC frequencies. Special thanks to Pavel Milanes for his outstanding work. (https://github.com/pavelmc/Si5351mcu)
- //T// The library "FastLED" is being utilized to send data to the LED string. This library was developed by Daniel Garcia in 2012 and I respectfully
- //E// thank him for the amazing work as well. (https://github.com/FastLED/FastLED)
- //S//
- ///// This sketch is written for an Arduino Mega2650. While it is possible to run modified code on a UNO or NANO, the memory limitations of those
- ///// devices makes it impractical for a spectrum analyzer operating with more than 7 bands. The cost difference between the UNO and Mega2560 is so small that
- ///// it makes no sense to cram code into an UNO with only a few bytes to spare.
- /////
- //N// --- PIN ASSIGNMENTS ---
- //O//
- //T// Smart LED's use Pin 36 for data. The LED's are defined as a single wire WS2812B type in "SETUP" section.
- //E// Strobe signal uses pin 7
- //S// Reset signal uses pin 6
- ///// Analog reading of MSGEQ7 IC1 and IC2 use pin A0 and A1 respectively.
- ///// Make sure all boards, sub-assemblies, LED strings, etc are all tied to a common ground. Failure to do so will result in erratic operation and
- ///// possible circuit or component failure. Treat smart LED's with respect. They are susceptable to electrostatic discharge and improper voltages & polarity!
- ///// This code is being offered AS-IS. End user assumes any responsibility associated with the use of this code.
- */
-
 #include <si5351mcu.h>
-
-
-
 #include <FastLED.h> // You must include FastLED version 3.002.006. This library allows communication with each LED
 
 /* MACROS */
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 #define DEBUG_DO(_x) (_x)
@@ -71,13 +29,13 @@
 /* EQ CONFIG */
 #define EQ_BANDS    (14)
 #define NOISECOMP   (65)
-#define EQ_DELTA    (30)
+#define EQ_DELTA    (30.0)
 
 /* LED CONFIG */
 #define ROWS                (24)
-#define COLUMNS             (1)
+#define COLUMNS             (2)
 #define DEFAULT_BRIGHT      (3)
-#define BRIGHT_HYSTERESIS   (5)
+#define BRIGHT_HYSTERESIS   (1)
 
 enum color_effect {
     DEFAULT_EFFECT
@@ -90,6 +48,7 @@ int MSGEQ_Bands[EQ_BANDS] = {0};
 bool lit_matrix[COLUMNS][ROWS];
 struct CRGB color_matrix[COLUMNS][ROWS];
 struct CRGB fastLED_matrix[COLUMNS*ROWS];
+float prev_column_values[COLUMNS] = {0};
 
 int curr_brightness = DEFAULT_BRIGHT;
 
@@ -148,13 +107,14 @@ void loop()
 
 void checkAndUpdateBrightness()
 {
-    int new_brightness = min(100, analogRead(BRIGHT_PIN) / 10);
-    updateBrightness(new_brightness);
+    int new_brightness = map(analogRead(BRIGHT_PIN), 0, 1023, 0, 100);
 
-    // if ((new_brightness > curr_brightness + BRIGHT_HYSTERESIS) ||
-    //     (new_brightness < curr_brightness - BRIGHT_HYSTERESIS)) {
-    //     updateBrightness(new_brightness);
-    // }
+    if ((new_brightness > curr_brightness + BRIGHT_HYSTERESIS) ||
+        (new_brightness < curr_brightness - BRIGHT_HYSTERESIS)) {
+        updateBrightness(new_brightness);
+    }
+
+    updateBrightness(new_brightness);
 }
 
 void updateBrightness(int brightness) 
@@ -212,36 +172,50 @@ void updateLEDMatrix()
 }
 
 /* TODO: THIS WILL NEED TO BE CHANGED ACCRODING TO AMOUNT OF COLUMNS */
-// int getColumnHeight(int column) {
-//     return min(ROWS, MSGEQ_Bands[8] / EQ_DELTA);
-// }
-
-float prev_column_values[COLUMNS] = {0};
-#define EQ_ALPHA    (float)(0)
 int getColumnHeight(int column) {
     /* This is the (sort of) VU equivalent version */
-    int prev_sum = 0;
-    int sum = 0;
     float current, previous, value = 0;
-    float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 0.06, 1.0);
-
-    for (int i = 0; i < EQ_BANDS; ++i) {
-        sum += MSGEQ_Bands[i];
-    }
+    float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
 
     previous = prev_column_values[column];
-    current = (((float)sum / 14.0) / 5.0);
+    current = (column == 0) ? MSGEQ_Bands[0] : MSGEQ_Bands[11];
+    current /= EQ_DELTA;
     value = (current * alpha) + (prev_column_values[column] * (1.0-alpha));
     prev_column_values[column] = value;
 
     if (shouldPrint()) {
-        Serial.print("alpha: ");Serial.println(alpha);
-        Serial.print("previous: ");Serial.println(prev_column_values[column]);
-        Serial.print("current: ");Serial.println(current);
-        Serial.print("value: ");Serial.println(value);
+        DEBUG_DO(Serial.print("alpha: ")); DEBUG_DO(Serial.println(alpha));
+        DEBUG_DO(Serial.print("previous: ")); DEBUG_DO(Serial.println(prev_column_values[column]));
+        DEBUG_DO(Serial.print("current: ")); DEBUG_DO(Serial.println(current));
+        DEBUG_DO(Serial.print("value: ")); DEBUG_DO(Serial.println(value));
+
+        DEBUG_DO(Serial.println("--------------------------------"));
     }
     return min(ROWS, (int)value);
 }
+
+// int getColumnHeight(int column) {
+//     /* This is the (sort of) VU equivalent version */
+//     float current, previous, value = 0;
+//     float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
+
+//     for (int i = 0; i < EQ_BANDS; ++i) {
+//         sum += MSGEQ_Bands[i];
+//     }
+
+//     previous = prev_column_values[column];
+//     current = (((float)sum / 14.0) / 5.0);
+//     value = (current * alpha) + (prev_column_values[column] * (1.0-alpha));
+//     prev_column_values[column] = value;
+
+//     if (shouldPrint()) {
+//         Serial.print("alpha: ");Serial.println(alpha);
+//         Serial.print("previous: ");Serial.println(prev_column_values[column]);
+//         Serial.print("current: ");Serial.println(current);
+//         Serial.print("value: ");Serial.println(value);
+//     }
+//     return min(ROWS, (int)value);
+// }
 
 void readMSGEQ7(void)
 {
