@@ -1,9 +1,8 @@
 #include <si5351mcu.h>
 #include <FastLED.h> // You must include FastLED version 3.002.006. This library allows communication with each LED
 
+#define DEBUG
 /* MACROS */
-// #define DEBUG
-
 #ifdef DEBUG
 #define DEBUG_DO(_x) (_x)
 #else
@@ -29,7 +28,7 @@
 /* EQ CONFIG */
 #define EQ_BANDS    (14)
 #define NOISECOMP   (65)
-#define EQ_DELTA    (30.0)
+#define EQ_DELTA    (40.0)
 
 /* LED CONFIG */
 #define ROWS                (24)
@@ -60,6 +59,7 @@ void setup()
     DEBUG_DO(Serial.println("Start of init"));
 
     /* Clock generator init */
+    /* NOTE: clock 0 is MSGEQ7 1 board-wise (oopsie) */
     Si.init(25000000L);
     Si.setFreq(0, 165000);
     Si.setFreq(1, 104000);
@@ -173,13 +173,14 @@ void updateLEDMatrix()
 
 /* TODO: THIS WILL NEED TO BE CHANGED ACCRODING TO AMOUNT OF COLUMNS */
 int getColumnHeight(int column) {
-    /* This is the (sort of) VU equivalent version */
+    /* This is a 14 -> 12 band convertor */
     float current, previous, value = 0;
     float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
 
     previous = prev_column_values[column];
-    current = (column == 0) ? MSGEQ_Bands[0] : MSGEQ_Bands[11];
+    current = MSGEQ_Bands[column + 1];
     current /= EQ_DELTA;
+
     value = (current * alpha) + (prev_column_values[column] * (1.0-alpha));
     prev_column_values[column] = value;
 
@@ -193,6 +194,28 @@ int getColumnHeight(int column) {
     }
     return min(ROWS, (int)value);
 }
+
+// int getColumnHeight(int column) {
+//     /* This is a crude 2 band eq */
+//     float current, previous, value = 0;
+//     float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
+
+//     previous = prev_column_values[column];
+//     current = (column == 0) ? MSGEQ_Bands[1] : MSGEQ_Bands[12];
+//     current /= EQ_DELTA;
+//     value = (current * alpha) + (prev_column_values[column] * (1.0-alpha));
+//     prev_column_values[column] = value;
+
+//     if (shouldPrint()) {
+//         DEBUG_DO(Serial.print("alpha: ")); DEBUG_DO(Serial.println(alpha));
+//         DEBUG_DO(Serial.print("previous: ")); DEBUG_DO(Serial.println(prev_column_values[column]));
+//         DEBUG_DO(Serial.print("current: ")); DEBUG_DO(Serial.println(current));
+//         DEBUG_DO(Serial.print("value: ")); DEBUG_DO(Serial.println(value));
+
+//         DEBUG_DO(Serial.println("--------------------------------"));
+//     }
+//     return min(ROWS, (int)value);
+// }
 
 // int getColumnHeight(int column) {
 //     /* This is the (sort of) VU equivalent version */
