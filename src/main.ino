@@ -66,6 +66,7 @@
 #define MSGEQ0_PIN  ANALOG(0)
 #define MSGEQ1_PIN  ANALOG(1)
 #define BRIGHT_PIN  ANALOG(2)
+#define SMOOTH_PIN  ANALOG(3)
 
 /* EQ CONFIG */
 #define EQ_BANDS    (14)
@@ -86,7 +87,6 @@ enum color_effect {
 /* GLOBAL VARIABLES */
 Si5351mcu Si;
 int MSGEQ_Bands[EQ_BANDS] = {0};
-int MSGEQ_Bands_prev[EQ_BANDS] = {0};
 bool lit_matrix[COLUMNS][ROWS];
 struct CRGB color_matrix[COLUMNS][ROWS];
 struct CRGB fastLED_matrix[COLUMNS*ROWS];
@@ -130,7 +130,7 @@ void setup()
 unsigned long loop_counter = 0;
 void loop()
 {
-    // checkAndUpdateBrightness();
+    checkAndUpdateBrightness();
     readMSGEQ7();
     updateLEDMatrix();
 
@@ -216,29 +216,27 @@ void updateLEDMatrix()
 //     return min(ROWS, MSGEQ_Bands[8] / EQ_DELTA);
 // }
 
+float prev_column_values[COLUMNS] = {0};
 #define EQ_ALPHA    (float)(0)
 int getColumnHeight(int column) {
     /* This is the (sort of) VU equivalent version */
     int prev_sum = 0;
     int sum = 0;
     float current, previous, value = 0;
-    float alpha = min(0.5, max(0, (float)analogRead(BRIGHT_PIN) / 2.0 / 1023.0));
+    float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 0.06, 1.0);
 
     for (int i = 0; i < EQ_BANDS; ++i) {
         sum += MSGEQ_Bands[i];
     }
-    for (int i = 0; i < EQ_BANDS; ++i) {
-        prev_sum += MSGEQ_Bands_prev[i];
-    }
-    previous = (((float)prev_sum / 14.0) / 5.0);
+
+    previous = prev_column_values[column];
     current = (((float)sum / 14.0) / 5.0);
-    value = (current * alpha) + (previous * (1.0-alpha));
+    value = (current * alpha) + (prev_column_values[column] * (1.0-alpha));
+    prev_column_values[column] = value;
 
     if (shouldPrint()) {
         Serial.print("alpha: ");Serial.println(alpha);
-        Serial.print("prev_sum: ");Serial.println(prev_sum);
-        Serial.print("sum: ");Serial.println(sum);
-        Serial.print("previous: ");Serial.println(previous);
+        Serial.print("previous: ");Serial.println(prev_column_values[column]);
         Serial.print("current: ");Serial.println(current);
         Serial.print("value: ");Serial.println(value);
     }
@@ -256,12 +254,10 @@ void readMSGEQ7(void)
     {                                                  // Loop that will increment counter that AnalogRead uses to determine which band to store data for.
         digitalWrite(STROBE_PIN, LOW);                 // Re-Set Strobe to LOW on each iteration of loop.
         delayMicroseconds(30);                         // Necessary delay required by MSGEQ7 for proper timing.
-        MSGEQ_Bands_prev[band] = MSGEQ_Bands[band];
         MSGEQ_Bands[band] = max(0, analogRead(MSGEQ0_PIN) - NOISECOMP);
         DEBUG_DO(printBandValue(band, MSGEQ_Bands[band]));
 
         ++band;
-        MSGEQ_Bands_prev[band] = MSGEQ_Bands[band];
         MSGEQ_Bands[band] = max(0, analogRead(MSGEQ1_PIN) - NOISECOMP);
         DEBUG_DO(printBandValue(band, MSGEQ_Bands[band]));
 
@@ -295,9 +291,10 @@ void printBandValue(int band, int value)
         else
             Serial.print(":");
         Serial.print(MSGEQ_Bands[band]);
-        Serial.print(" (");
-        Serial.print(MSGEQ_Bands_prev[band]);
-        Serial.print(")");
         Serial.println();
     }
+}
+
+float mapToFloat(int value, int in_min, int in_max, float out_min, float out_max) {
+    return ((float)value - (float)in_min) * ((float)out_max - (float)out_min) / ((float)in_max - (float)in_min) + (float)out_min;
 }
