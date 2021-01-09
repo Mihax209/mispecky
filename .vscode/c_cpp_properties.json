@@ -3,8 +3,13 @@
         {
             "name": "Win32",
             "includePath": [
-                "C:\\Users\\Michael M\\Documents\\Arduino\\libraries\\Etherkit_Si5351\\src",
+                "C:\\Program Files (x86)\\Arduino\\hardware\\tools\\**",
+                "C:\\Users\\Michael M\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
+                "C:\\Users\\Michael M\\Documents\\Arduino\\libraries\\**",
+                "C:\\Program Files (x86)\\Arduino\\libraries\\**",
+                "C:\\Users\\Michael M\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.7.4\\**",
                 "C:\\Users\\Michael M\\Documents\\Arduino\\libraries\\FastLED",
+                "C:\\Users\\Michael M\\Documents\\Arduino\\libraries\\Si5351mcu\\src",
                 "C:\\Program Files (x86)\\Arduino\\**",
                 "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\**",
                 "C:\\Program Files (x86)\\Arduino\\tools\\**"
@@ -12,7 +17,10 @@
             "forcedInclude": [
                 "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h"
             ],
-            "intelliSenseMode": "msvc-x64"
+            "intelliSenseMode": "msvc-x64",
+            "defines": [
+                "USBCON"
+            ]
         }
     ],
     "version": 4
