@@ -38,10 +38,12 @@
  */
 
 #include <si5351mcu.h>
-Si5351mcu Si;
+
+
 
 #include <FastLED.h> // You must include FastLED version 3.002.006. This library allows communication with each LED
 
+/* MACROS */
 #define DEBUG
 
 #ifdef DEBUG
@@ -50,92 +52,215 @@ Si5351mcu Si;
 #define DEBUG_DO(_x)
 #endif
 
+#define LENOF(_arr) ((sizeof(_arr)) / (sizeof((_arr)[0])))
+
+/* These definitions don't do nothing, it's just to visually see what we mean in different pin assignments */
+#define ANALOG(x)   (x)
+#define DIGITAL(x)  (x)
+
 /* PINS */
-#define RESET_PIN   (2)     // Pin to instruct MSGEQ7 to return to band zero and inspect it. Default Pin is 7. Default Pin on SpeckyBoard is 6.
-#define STROBE_PIN  (3)     // Pin to instruct MSGEQ7 IC's to inspect next band (band 0 thru 6). Default Pin is 6. Default Pin on SpeckyBoard is 7.
-#define HBEAT_PIN   (4)     // Pin for the hearbteat LED
-#define DATA_PIN    (5)     // Pin for serial communication with LED string. This pin directs data thru termination resistor R13 on my 'SPECKY-BOARD'.
+#define RESET_PIN   DIGITAL(2)      // Pin to instruct MSGEQ7 to return to band zero and inspect it. Default Pin is 7. Default Pin on SpeckyBoard is 6.
+#define STROBE_PIN  DIGITAL(3)      // Pin to instruct MSGEQ7 IC's to inspect next band (band 0 thru 6). Default Pin is 6. Default Pin on SpeckyBoard is 7.
+#define HBEAT_PIN   DIGITAL(4)      // Pin for the hearbteat LED
+#define DATA_PIN    DIGITAL(5)      // Pin for serial communication with LED string. This pin directs data thru termination resistor R13 on my 'SPECKY-BOARD'.
+#define MSGEQ0_PIN  ANALOG(0)
+#define MSGEQ1_PIN  ANALOG(1)
+#define BRIGHT_PIN  ANALOG(2)
 
 /* EQ CONFIG */
-#define COLUMNS     (14)
-#define NOISECOMP   (200)
+#define EQ_BANDS    (14)
+#define NOISECOMP   (120)
+#define EQ_DELTA    (30)
 
-int MSGEQ_Bands[COLUMNS];    // Setup column array
+/* LED CONFIG */
+#define ROWS                (24)
+#define COLUMNS             (1)
+#define DEFAULT_BRIGHT      (50)
+#define BRIGHT_HYSTERESIS   (5)
+
+enum color_effect {
+    DEFAULT_EFFECT
+};
+
+
+/* GLOBAL VARIABLES */
+Si5351mcu Si;
+int MSGEQ_Bands[EQ_BANDS];
+bool lit_matrix[COLUMNS][ROWS];
+struct CRGB color_matrix[COLUMNS][ROWS];
+struct CRGB fastLED_matrix[COLUMNS*ROWS];
+
+int curr_brightness = DEFAULT_BRIGHT;
 
 /* ----------------------------------- SETUP ----------------------------------- */
 
 void setup()
 {
     DEBUG_DO(Serial.begin(115200));
+    DEBUG_DO(Serial.println("Start of init"));
 
-    // Start Masterclock configuration; The remainder of this program will fail if this does not initialize!
-    Si.init(25000000L);        // Library procedure to set up for use with non-default 25.000 MHz xtal
-    Si.setFreq(0, 165000);     // Enable the output 0 with specified frequency of 165.000 KHz; Default Pin for SpeckyBoard
-    Si.setFreq(1, 104000);     // Enable the output 1 with specified frequency of 104.000 KHz; Default Pin for SpeckyBoard
-    Si.setPower(0, SIOUT_8mA); // Set power output level of clock 0
-    Si.setPower(1, SIOUT_8mA); // Set power output level of clock 1
-    Si.enable(0);              // Enable output 0
-    Si.enable(1);              // Enable output 1
-    // End Masterclock configuration
+    /* Clock generator init */
+    Si.init(25000000L);
+    Si.setFreq(0, 165000);
+    Si.setFreq(1, 104000);
+    Si.setPower(0, SIOUT_8mA);
+    Si.setPower(1, SIOUT_8mA);
+    Si.enable(0);
+    Si.enable(1);
 
+    /* FastLED library init */
+    FastLED.addLeds<WS2812B, DATA_PIN, GRB>(fastLED_matrix, LENOF(fastLED_matrix));
+    updateBrightness(DEFAULT_BRIGHT);
+
+    /* pin configurations */
     pinMode(HBEAT_PIN, OUTPUT);
     pinMode(DATA_PIN, OUTPUT);
     pinMode(STROBE_PIN, OUTPUT);
     pinMode(RESET_PIN, OUTPUT);
+
+    /* LED matrix init */
+    updateColorMatrix(DEFAULT_EFFECT);
+
+    DEBUG_DO(Serial.println("init completed"));
 }
 
 /* ----------------------------------- LOOP ----------------------------------- */
 
+unsigned long loop_counter = 0;
 void loop()
 {
-    readMSGEQ7(); // Call to function that reads MSGEQ7 IC's via analogue inputs.
-
+    checkAndUpdateBrightness();
+    readMSGEQ7();
+    updateLEDMatrix();
 
     digitalWrite(HBEAT_PIN, HIGH);
-    delay(30);
+    delay(20);
     digitalWrite(HBEAT_PIN, LOW);
     delay(10);
+
+    ++loop_counter;
+    if (1000000 == loop_counter)
+        loop_counter = 0;
 }
 
 /* ----------------------------------- FUNCTIONS ----------------------------------- */
 
-unsigned long loop_counter = 0;
-void readMSGEQ7(void) // Function that reads the 7 bands of the audio input.
+void checkAndUpdateBrightness()
+{
+    int new_brightness = min(100, analogRead(BRIGHT_PIN) / 10);
+
+    if ((new_brightness > curr_brightness + BRIGHT_HYSTERESIS) ||
+        (new_brightness < curr_brightness - BRIGHT_HYSTERESIS)) {
+        updateBrightness(new_brightness);
+    }
+}
+
+void updateBrightness(int brightness) 
+{
+    curr_brightness = brightness;
+    FastLED.setBrightness(brightness);
+}
+
+void updateColorMatrix(enum color_effect effect) 
+{
+    switch (effect) {
+    case DEFAULT_EFFECT:
+        updateColorMatrixDefaultEffect();
+        break;
+    default:
+        DEBUG_DO(Serial.print("ERROR! got to updateColorMatrix with effect num: "));
+        DEBUG_DO(Serial.println(effect));
+
+        updateColorMatrixDefaultEffect();
+        break;
+    }
+}
+
+void updateColorMatrixDefaultEffect()
+{
+    for (int col = 0; col < COLUMNS; ++col) {
+        for (int row = 0; row < ROWS; ++row) {
+            color_matrix[col][row] = (row < 18) ? CRGB::Cyan : CRGB::Magenta;
+        }
+    }
+}
+
+void updateLEDMatrix()
+{
+    for (int col = 0; col < COLUMNS; ++col) {
+        int height = getColumnHeight(col);
+        if (shouldPrint()) {
+            Serial.print("Column height: ");
+            Serial.println(height);
+        }
+        if (shouldPrint())
+        for (int row = 0; row < ROWS; ++row) {
+            lit_matrix[col][row] = (row <= height);
+        }
+    }
+
+    for (int col = 0; col < COLUMNS; ++col) {
+        for (int row = 0; row < ROWS; ++row) {
+            int flat_index = (col * ROWS) + row;
+            fastLED_matrix[flat_index] =
+                lit_matrix[col][row] ? color_matrix[col][row] : CRGB::Black;
+        }
+    }
+}
+
+/* TODO: THIS WILL NEED TO BE CHANGED ACCRODING TO AMOUNT OF COLUMNS */
+int getColumnHeight(int column) {
+    return min(ROWS, MSGEQ_Bands[3] / EQ_DELTA);
+}
+
+void readMSGEQ7(void)
 {
     digitalWrite(RESET_PIN, HIGH); // Part 1 of Reset Pulse. Reset pulse duration must be 100nS minimum.
     digitalWrite(RESET_PIN, LOW);  // Part 2 of Reset pulse. These two events consume more than 100nS in CPU time.
 
-    DEBUG_DO(Serial.println());DEBUG_DO(Serial.println());DEBUG_DO(Serial.println());DEBUG_DO(Serial.println());
-    DEBUG_DO(Serial.println());DEBUG_DO(Serial.println());DEBUG_DO(Serial.println());DEBUG_DO(Serial.println());
+    DEBUG_DO(printBandPrologue());
 
-    DEBUG_DO(Serial.print("--"));
-    DEBUG_DO(Serial.print(loop_counter));
-    DEBUG_DO(Serial.print("--"));
-    DEBUG_DO(Serial.println());
-
-    for (int band = 0; band < COLUMNS; band++)
+    for (int band = 0; band < EQ_BANDS; band++)
     {                                                  // Loop that will increment counter that AnalogRead uses to determine which band to store data for.
         digitalWrite(STROBE_PIN, LOW);                 // Re-Set Strobe to LOW on each iteration of loop.
         delayMicroseconds(30);                         // Necessary delay required by MSGEQ7 for proper timing.
-        MSGEQ_Bands[band] = analogRead(0) - NOISECOMP; // Saves the reading of the amplitude voltage on Analog Pin 0.
+        MSGEQ_Bands[band] = max(0, analogRead(MSGEQ0_PIN) - NOISECOMP);
+        DEBUG_DO(printBandValue(band, MSGEQ_Bands[band]));
 
-        DEBUG_DO(Serial.print(band));
-        DEBUG_DO(Serial.print(":"));
-        DEBUG_DO(Serial.print(MSGEQ_Bands[band]));
-        DEBUG_DO(Serial.println());
-
-        band++;
-        MSGEQ_Bands[band] = analogRead(1) - NOISECOMP; // Saves the reading of the amplitude voltage on Analog Pin 1.
-
-        DEBUG_DO(Serial.print(band));
-        DEBUG_DO(Serial.print(":"));
-        DEBUG_DO(Serial.print(MSGEQ_Bands[band]));
-        DEBUG_DO(Serial.println());
+        ++band;
+        MSGEQ_Bands[band] = max(0, analogRead(MSGEQ1_PIN) - NOISECOMP);
+        DEBUG_DO(printBandValue(band, MSGEQ_Bands[band]));
 
         digitalWrite(STROBE_PIN, HIGH);
     }
+}
 
-    DEBUG_DO(Serial.println());
+bool shouldPrint()
+{
+    return (0 == (loop_counter % 25));
+}
 
-    ++loop_counter;
+void printBandPrologue()
+{
+    if (shouldPrint()) {
+        Serial.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        Serial.print("--");
+        Serial.print(loop_counter);
+        Serial.print("-- Brightness: ");
+        Serial.print(curr_brightness);
+        Serial.println();
+    }
+}
+
+void printBandValue(int band, int value)
+{
+    if (shouldPrint()) {
+        Serial.print(band);
+        if (band < 10)
+            Serial.print(": ");
+        else
+            Serial.print(":");
+        Serial.print(MSGEQ_Bands[band]);
+        Serial.println();
+    }
 }

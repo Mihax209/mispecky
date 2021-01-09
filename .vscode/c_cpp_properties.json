@@ -19,7 +19,8 @@
             ],
             "intelliSenseMode": "msvc-x64",
             "defines": [
-                "USBCON"
+                "USBCON",
+                "FASTLED_HAS_CLOCKLESS"
             ]
         }
     ],
