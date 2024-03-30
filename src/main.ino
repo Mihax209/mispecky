@@ -1,13 +1,15 @@
 #include <si5351mcu.h>
 #include <FastLED.h> // You must include FastLED version 3.002.006. This library allows communication with each LED
 
-#define DEBUG
+// #define DEBUG
 /* MACROS */
 #ifdef DEBUG
 #define DEBUG_DO(_x) (_x)
 #else
 #define DEBUG_DO(_x)
 #endif
+
+#define PRINT_INTERVAL (25)
 
 #define LENOF(_arr) ((sizeof(_arr)) / (sizeof((_arr)[0])))
 
@@ -27,12 +29,15 @@
 
 /* EQ CONFIG */
 #define EQ_BANDS    (14)
-#define NOISECOMP   (65)
-#define EQ_DELTA    (40.0)
+#define NOISECOMP   (70)
+#define GAIN        (1.1)
+#define EQ_DELTA    (5.0)
+#define MIN_LEDS    (2)
 
 /* LED CONFIG */
-#define ROWS                (24)
-#define COLUMNS             (2)
+#define ROWS                (23)
+#define COLUMNS             (12)
+#define AMOUNT_TRIMMED      (3)
 #define DEFAULT_BRIGHT      (3)
 #define BRIGHT_HYSTERESIS   (1)
 
@@ -46,7 +51,7 @@ Si5351mcu Si;
 int MSGEQ_Bands[EQ_BANDS] = {0};
 bool lit_matrix[COLUMNS][ROWS];
 struct CRGB color_matrix[COLUMNS][ROWS];
-struct CRGB fastLED_matrix[COLUMNS*ROWS];
+struct CRGB fastLED_matrix[(COLUMNS*ROWS) - (2*AMOUNT_TRIMMED)];
 float prev_column_values[COLUMNS] = {0};
 
 int curr_brightness = DEFAULT_BRIGHT;
@@ -79,7 +84,7 @@ void setup()
     pinMode(RESET_PIN, OUTPUT);
 
     /* LED matrix init */
-    updateColorMatrix(DEFAULT_EFFECT);
+    setColorMatrix(DEFAULT_EFFECT);
 
     DEBUG_DO(Serial.println("init completed"));
 }
@@ -123,26 +128,26 @@ void updateBrightness(int brightness)
     FastLED.setBrightness(brightness);
 }
 
-void updateColorMatrix(enum color_effect effect) 
+void setColorMatrix(enum color_effect effect) 
 {
     switch (effect) {
     case DEFAULT_EFFECT:
-        updateColorMatrixDefaultEffect();
+        setColorMatrixDefaultEffect();
         break;
     default:
         DEBUG_DO(Serial.print("ERROR! got to updateColorMatrix with effect num: "));
         DEBUG_DO(Serial.println(effect));
 
-        updateColorMatrixDefaultEffect();
+        setColorMatrixDefaultEffect();
         break;
     }
 }
 
-void updateColorMatrixDefaultEffect()
+void setColorMatrixDefaultEffect()
 {
     for (int col = 0; col < COLUMNS; ++col) {
         for (int row = 0; row < ROWS; ++row) {
-            color_matrix[col][row] = (row < 18) ? CRGB::Cyan : CRGB::Magenta;
+            color_matrix[col][row] = (row < 14) ? CRGB::Cyan : (row < 20 ? CRGB::Magenta : CRGB::Yellow);
         }
     }
 }
@@ -152,19 +157,23 @@ void updateLEDMatrix()
     for (int col = 0; col < COLUMNS; ++col) {
         int height = getColumnHeight(col);
         if (shouldPrint()) {
-            Serial.print("Column height: ");
-            Serial.println(height);
+            DEBUG_DO(Serial.print("Column height: "));
+            DEBUG_DO(Serial.println(height));
         }
         for (int row = 0; row < ROWS; ++row) {
             lit_matrix[col][row] = (row < height);
         }
     }
 
+    int ignore_cnt = 0;
     for (int col = 0; col < COLUMNS; ++col) {
         for (int row = 0; row < ROWS; ++row) {
-            int flat_index = (col * ROWS) + row;
-            fastLED_matrix[flat_index] =
-                lit_matrix[col][row] ? color_matrix[col][row] : CRGB::Black;
+            int flat_index = (col * ROWS) + row - 3;
+
+            if (flat_index >= 0) {
+                fastLED_matrix[flat_index] =
+                    lit_matrix[col][row] ? color_matrix[col][row] : CRGB::Black;
+            }
         }
     }
 
@@ -175,23 +184,28 @@ void updateLEDMatrix()
 int getColumnHeight(int column) {
     /* This is a 14 -> 12 band convertor */
     float current, previous, value = 0;
-    float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
+    // float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
+    float alpha = 0.85;
 
     previous = prev_column_values[column];
     current = MSGEQ_Bands[column + 1];
+    if (column == 0) {
+        // Bass average with invisible band
+        current = max(current, MSGEQ_Bands[0]);
+    }
     current /= EQ_DELTA;
 
     value = (current * alpha) + (prev_column_values[column] * (1.0-alpha));
     prev_column_values[column] = value;
 
-    if (shouldPrint()) {
-        DEBUG_DO(Serial.print("alpha: ")); DEBUG_DO(Serial.println(alpha));
-        DEBUG_DO(Serial.print("previous: ")); DEBUG_DO(Serial.println(prev_column_values[column]));
-        DEBUG_DO(Serial.print("current: ")); DEBUG_DO(Serial.println(current));
-        DEBUG_DO(Serial.print("value: ")); DEBUG_DO(Serial.println(value));
+    // if (shouldPrint()) {
+    //     DEBUG_DO(Serial.print("alpha: ")); DEBUG_DO(Serial.println(alpha));
+    //     DEBUG_DO(Serial.print("previous: ")); DEBUG_DO(Serial.println(prev_column_values[column]));
+    //     DEBUG_DO(Serial.print("current: ")); DEBUG_DO(Serial.println(current));
+    //     DEBUG_DO(Serial.print("value: ")); DEBUG_DO(Serial.println(value));
 
-        DEBUG_DO(Serial.println("--------------------------------"));
-    }
+    //     DEBUG_DO(Serial.println("--------------------------------"));
+    // }
     return min(ROWS, (int)value);
 }
 
@@ -251,11 +265,11 @@ void readMSGEQ7(void)
     {                                                  // Loop that will increment counter that AnalogRead uses to determine which band to store data for.
         digitalWrite(STROBE_PIN, LOW);                 // Re-Set Strobe to LOW on each iteration of loop.
         delayMicroseconds(30);                         // Necessary delay required by MSGEQ7 for proper timing.
-        MSGEQ_Bands[band] = max(0, analogRead(MSGEQ0_PIN) - NOISECOMP);
+        MSGEQ_Bands[band] = max(0, analogRead(MSGEQ0_PIN) - NOISECOMP) * GAIN;
         DEBUG_DO(printBandValue(band, MSGEQ_Bands[band]));
 
         ++band;
-        MSGEQ_Bands[band] = max(0, analogRead(MSGEQ1_PIN) - NOISECOMP);
+        MSGEQ_Bands[band] = max(0, analogRead(MSGEQ1_PIN) - NOISECOMP) * GAIN;
         DEBUG_DO(printBandValue(band, MSGEQ_Bands[band]));
 
         digitalWrite(STROBE_PIN, HIGH);
@@ -264,31 +278,31 @@ void readMSGEQ7(void)
 
 bool shouldPrint()
 {
-    return (0 == (loop_counter % 25));
+    return (0 == (loop_counter % PRINT_INTERVAL));
 }
 
 void printBandPrologue()
 {
     if (shouldPrint()) {
-        Serial.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        Serial.print("--");
-        Serial.print(loop_counter);
-        Serial.print("-- Brightness: ");
-        Serial.print(curr_brightness);
-        Serial.println();
+        DEBUG_DO(Serial.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"));
+        DEBUG_DO(Serial.print("--"));
+        DEBUG_DO(Serial.print(loop_counter));
+        DEBUG_DO(Serial.print("-- Brightness: "));
+        DEBUG_DO(Serial.print(curr_brightness));
+        DEBUG_DO(Serial.println());
     }
 }
 
 void printBandValue(int band, int value)
 {
     if (shouldPrint()) {
-        Serial.print(band);
+        DEBUG_DO(Serial.print(band));
         if (band < 10)
-            Serial.print(": ");
+            DEBUG_DO(Serial.print(": "));
         else
-            Serial.print(":");
-        Serial.print(MSGEQ_Bands[band]);
-        Serial.println();
+            DEBUG_DO(Serial.print(":"));
+        DEBUG_DO(Serial.print(MSGEQ_Bands[band]));
+        DEBUG_DO(Serial.println());
     }
 }
 
