@@ -1,7 +1,7 @@
 #include <si5351mcu.h>
 #include <FastLED.h> // You must include FastLED version 3.002.006. This library allows communication with each LED
 
-// #define DEBUG
+#define DEBUG
 /* MACROS */
 #ifdef DEBUG
 #define DEBUG_DO(_x) (_x)
@@ -9,7 +9,7 @@
 #define DEBUG_DO(_x)
 #endif
 
-#define PRINT_INTERVAL (25)
+#define PRINT_INTERVAL (15)
 
 #define LENOF(_arr) ((sizeof(_arr)) / (sizeof((_arr)[0])))
 
@@ -32,7 +32,6 @@
 #define NOISECOMP   (70)
 #define GAIN        (1.2)
 #define EQ_DELTA    (5.0)
-#define MIN_LEDS    (2)
 
 /* LED CONFIG */
 #define ROWS                (23)
@@ -40,6 +39,7 @@
 #define AMOUNT_TRIMMED      (3)
 #define DEFAULT_BRIGHT      (1)
 #define BRIGHT_HYSTERESIS   (1)
+#define PEAK_INDICATOR_TIMEOUT  (25)
 
 enum color_effect {
     DEFAULT_COLOR,
@@ -54,8 +54,10 @@ int MSGEQ_Bands[EQ_BANDS] = {0};
 bool lit_matrix[COLUMNS][ROWS];
 struct CRGB color_matrix[COLUMNS][ROWS];
 struct CRGB fastLED_matrix[(COLUMNS*ROWS) - (2*AMOUNT_TRIMMED)];
-uint8_t 
+uint8_t peak_indicators[COLUMNS] = {0};
+unsigned int peak_indicators_timeout[COLUMNS] = {0};
 float prev_column_values[COLUMNS] = {0};
+bool g_peak_indicators_enabled = false;
 
 int curr_brightness = DEFAULT_BRIGHT;
 
@@ -208,13 +210,35 @@ void horizontalGradientColor()
 void updateLEDMatrix()
 {
     for (int col = 0; col < COLUMNS; ++col) {
-        int height = getColumnHeight(col);
-        if (shouldPrint()) {
-            DEBUG_DO(Serial.print("Column height: "));
-            DEBUG_DO(Serial.println(height));
-        }
+        int height = min(getColumnHeight(col), ROWS);
+        /* light up EQ band */
         for (int row = 0; row < ROWS; ++row) {
             lit_matrix[col][row] = (row < height);
+        }
+
+        if (g_peak_indicators_enabled) {
+            /* add peak indicator */
+            if (height > peak_indicators[col] ||
+                peak_indicators_timeout[col] > PEAK_INDICATOR_TIMEOUT
+            ) {
+                peak_indicators[col] = height;
+                peak_indicators_timeout[col] = 0;
+                lit_matrix[col][peak_indicators[col]] = false;
+            }
+            else {
+                peak_indicators_timeout[col]++;
+                lit_matrix[col][peak_indicators[col]] = true;
+            }
+        }
+
+        if (shouldPrint()) {
+            DEBUG_DO(Serial.print("Column height: "));
+            DEBUG_DO(Serial.print(height));
+            DEBUG_DO(Serial.print(". Peak: "));
+            DEBUG_DO(Serial.print(peak_indicators[col]));
+            DEBUG_DO(Serial.print(" ("));
+            DEBUG_DO(Serial.print(peak_indicators_timeout[col]));
+            DEBUG_DO(Serial.println(")"));
         }
     }
 
