@@ -1,7 +1,7 @@
 #include <si5351mcu.h>
 #include <FastLED.h> // You must include FastLED version 3.002.006. This library allows communication with each LED
 
-#define DEBUG
+// #define DEBUG
 /* MACROS */
 #ifdef DEBUG
 #define DEBUG_DO(_x) (_x)
@@ -30,7 +30,7 @@
 /* EQ CONFIG */
 #define EQ_BANDS    (14)
 #define NOISECOMP   (70)
-#define GAIN        (1.2)
+#define GAIN        (1.0)
 #define EQ_DELTA    (5.0)
 
 /* LED CONFIG */
@@ -262,7 +262,7 @@ int getColumnHeight(int column) {
     /* This is a 14 -> 12 band convertor */
     float current, previous, value = 0;
     // float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
-    float alpha = 0.5;
+    float alpha = 0.45;
 
     previous = prev_column_values[column];
     current = MSGEQ_Bands[column + 1];
