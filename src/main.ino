@@ -30,7 +30,7 @@
 /* EQ CONFIG */
 #define EQ_BANDS    (14)
 #define NOISECOMP   (70)
-#define GAIN        (1.1)
+#define GAIN        (1.2)
 #define EQ_DELTA    (5.0)
 #define MIN_LEDS    (2)
 
@@ -38,13 +38,15 @@
 #define ROWS                (23)
 #define COLUMNS             (12)
 #define AMOUNT_TRIMMED      (3)
-#define DEFAULT_BRIGHT      (3)
+#define DEFAULT_BRIGHT      (1)
 #define BRIGHT_HYSTERESIS   (1)
 
 enum color_effect {
-    DEFAULT_EFFECT
+    DEFAULT_COLOR,
+    INVERTED_COLOR,
+    VERTICAL_GRADIENT,
+    HORITZONTAL_GRADIENT,
 };
-
 
 /* GLOBAL VARIABLES */
 Si5351mcu Si;
@@ -52,6 +54,7 @@ int MSGEQ_Bands[EQ_BANDS] = {0};
 bool lit_matrix[COLUMNS][ROWS];
 struct CRGB color_matrix[COLUMNS][ROWS];
 struct CRGB fastLED_matrix[(COLUMNS*ROWS) - (2*AMOUNT_TRIMMED)];
+uint8_t 
 float prev_column_values[COLUMNS] = {0};
 
 int curr_brightness = DEFAULT_BRIGHT;
@@ -84,7 +87,7 @@ void setup()
     pinMode(RESET_PIN, OUTPUT);
 
     /* LED matrix init */
-    setColorMatrix(DEFAULT_EFFECT);
+    setColorMatrix(INVERTED_COLOR);
 
     DEBUG_DO(Serial.println("init completed"));
 }
@@ -112,7 +115,7 @@ void loop()
 
 void checkAndUpdateBrightness()
 {
-    int new_brightness = map(analogRead(BRIGHT_PIN), 0, 1023, 0, 100);
+    int new_brightness = map(analogRead(BRIGHT_PIN), 0, 1023, 0, 35);
 
     if ((new_brightness > curr_brightness + BRIGHT_HYSTERESIS) ||
         (new_brightness < curr_brightness - BRIGHT_HYSTERESIS)) {
@@ -131,24 +134,74 @@ void updateBrightness(int brightness)
 void setColorMatrix(enum color_effect effect) 
 {
     switch (effect) {
-    case DEFAULT_EFFECT:
-        setColorMatrixDefaultEffect();
+    case DEFAULT_COLOR:
+        defaultColor();
+        break;
+    case INVERTED_COLOR:
+        invertedColor();
+        break;
+    case VERTICAL_GRADIENT:
+        verticalGradientColor();
+        break;
+    case HORITZONTAL_GRADIENT:
+        horizontalGradientColor();
         break;
     default:
         DEBUG_DO(Serial.print("ERROR! got to updateColorMatrix with effect num: "));
         DEBUG_DO(Serial.println(effect));
 
-        setColorMatrixDefaultEffect();
+        defaultColor();
         break;
     }
 }
 
-void setColorMatrixDefaultEffect()
+void defaultColor()
 {
     for (int col = 0; col < COLUMNS; ++col) {
         for (int row = 0; row < ROWS; ++row) {
-            color_matrix[col][row] = (row < 14) ? CRGB::Cyan : (row < 20 ? CRGB::Magenta : CRGB::Yellow);
+            color_matrix[col][row] = 
+                (row < 14) ? CRGB::Cyan : (row < 20 ? CRGB::Magenta : CRGB::Yellow);
         }
+    }
+}
+
+void invertedColor()
+{
+    for (int col = 0; col < COLUMNS; ++col) {
+        for (int row = 0; row < ROWS; ++row) {
+            color_matrix[col][row] = 
+                (row < 14) ? CRGB::Cyan : (row < 20 ? CRGB::Yellow : CRGB::Magenta);
+        }
+    }
+}
+
+void verticalGradientColor()
+{
+    int start_hue = 235;
+    int end_hue = 5;
+
+    int curr_hue = start_hue;
+    for (int row = 0; row < ROWS; ++row) {
+        for (int col = 0; col < COLUMNS; ++col) {
+            color_matrix[col][row] = CHSV((uint8_t)curr_hue, 255, 255);
+        }
+
+        curr_hue += (end_hue - start_hue) / COLUMNS;
+    }
+}
+
+void horizontalGradientColor()
+{
+    int start_hue = 240;
+    int end_hue = 0;
+
+    int curr_hue = start_hue;
+    for (int col = 0; col < COLUMNS; ++col) {
+        for (int row = 0; row < ROWS; ++row) {
+            color_matrix[col][row] = CHSV((uint8_t)curr_hue, 255, 255);
+        }
+
+        curr_hue += (end_hue - start_hue) / ROWS;
     }
 }
 
@@ -180,12 +233,12 @@ void updateLEDMatrix()
     FastLED.show();
 }
 
-/* TODO: THIS WILL NEED TO BE CHANGED ACCRODING TO AMOUNT OF COLUMNS */
+/* NOTE: THIS WILL NEED TO BE CHANGED ACCRODING TO AMOUNT OF COLUMNS */
 int getColumnHeight(int column) {
     /* This is a 14 -> 12 band convertor */
     float current, previous, value = 0;
     // float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
-    float alpha = 0.85;
+    float alpha = 0.5;
 
     previous = prev_column_values[column];
     current = MSGEQ_Bands[column + 1];
@@ -198,61 +251,9 @@ int getColumnHeight(int column) {
     value = (current * alpha) + (prev_column_values[column] * (1.0-alpha));
     prev_column_values[column] = value;
 
-    // if (shouldPrint()) {
-    //     DEBUG_DO(Serial.print("alpha: ")); DEBUG_DO(Serial.println(alpha));
-    //     DEBUG_DO(Serial.print("previous: ")); DEBUG_DO(Serial.println(prev_column_values[column]));
-    //     DEBUG_DO(Serial.print("current: ")); DEBUG_DO(Serial.println(current));
-    //     DEBUG_DO(Serial.print("value: ")); DEBUG_DO(Serial.println(value));
-
-    //     DEBUG_DO(Serial.println("--------------------------------"));
-    // }
     return min(ROWS, (int)value);
 }
 
-// int getColumnHeight(int column) {
-//     /* This is a crude 2 band eq */
-//     float current, previous, value = 0;
-//     float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
-
-//     previous = prev_column_values[column];
-//     current = (column == 0) ? MSGEQ_Bands[1] : MSGEQ_Bands[12];
-//     current /= EQ_DELTA;
-//     value = (current * alpha) + (prev_column_values[column] * (1.0-alpha));
-//     prev_column_values[column] = value;
-
-//     if (shouldPrint()) {
-//         DEBUG_DO(Serial.print("alpha: ")); DEBUG_DO(Serial.println(alpha));
-//         DEBUG_DO(Serial.print("previous: ")); DEBUG_DO(Serial.println(prev_column_values[column]));
-//         DEBUG_DO(Serial.print("current: ")); DEBUG_DO(Serial.println(current));
-//         DEBUG_DO(Serial.print("value: ")); DEBUG_DO(Serial.println(value));
-
-//         DEBUG_DO(Serial.println("--------------------------------"));
-//     }
-//     return min(ROWS, (int)value);
-// }
-
-// int getColumnHeight(int column) {
-//     /* This is the (sort of) VU equivalent version */
-//     float current, previous, value = 0;
-//     float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
-
-//     for (int i = 0; i < EQ_BANDS; ++i) {
-//         sum += MSGEQ_Bands[i];
-//     }
-
-//     previous = prev_column_values[column];
-//     current = (((float)sum / 14.0) / 5.0);
-//     value = (current * alpha) + (prev_column_values[column] * (1.0-alpha));
-//     prev_column_values[column] = value;
-
-//     if (shouldPrint()) {
-//         Serial.print("alpha: ");Serial.println(alpha);
-//         Serial.print("previous: ");Serial.println(prev_column_values[column]);
-//         Serial.print("current: ");Serial.println(current);
-//         Serial.print("value: ");Serial.println(value);
-//     }
-//     return min(ROWS, (int)value);
-// }
 
 void readMSGEQ7(void)
 {
@@ -297,10 +298,13 @@ void printBandValue(int band, int value)
 {
     if (shouldPrint()) {
         DEBUG_DO(Serial.print(band));
-        if (band < 10)
+        if (band < 10) {
             DEBUG_DO(Serial.print(": "));
-        else
+        }
+        else {
             DEBUG_DO(Serial.print(":"));
+        }
+
         DEBUG_DO(Serial.print(MSGEQ_Bands[band]));
         DEBUG_DO(Serial.println());
     }
