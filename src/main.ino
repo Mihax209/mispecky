@@ -38,7 +38,7 @@
 #define COLUMNS             (12)
 #define AMOUNT_TRIMMED      (3)
 #define DEFAULT_BRIGHT      (4)
-#define BRIGHT_HYSTERESIS   (1)
+#define BRIGHT_HYSTERESIS   (25)
 #define PEAK_INDICATOR_TIMEOUT  (25)
 
 enum color_effect {
@@ -58,6 +58,7 @@ uint8_t peak_indicators[COLUMNS] = {0};
 unsigned int peak_indicators_timeout[COLUMNS] = {0};
 float prev_column_values[COLUMNS] = {0};
 bool g_peak_indicators_enabled = false;
+int g_curr_bright_analog = 0;
 
 int curr_brightness = DEFAULT_BRIGHT;
 
@@ -117,12 +118,13 @@ void loop()
 
 void checkAndUpdateBrightness()
 {
-    int new_brightness = map(analogRead(BRIGHT_PIN), 0, 1023, 0, 35);
-
-    if ((new_brightness > curr_brightness + BRIGHT_HYSTERESIS) ||
-        (new_brightness < curr_brightness - BRIGHT_HYSTERESIS)) {
-        updateBrightness(new_brightness);
+    int bright_analog = analogRead(BRIGHT_PIN);
+    if ((bright_analog > g_curr_bright_analog + BRIGHT_HYSTERESIS) ||
+        (bright_analog < g_curr_bright_analog - BRIGHT_HYSTERESIS)) {
+        g_curr_bright_analog = bright_analog;
     }
+    
+    int new_brightness = map(g_curr_bright_analog, 0, 1023, 0, 35);
 
     updateBrightness(new_brightness);
 }
