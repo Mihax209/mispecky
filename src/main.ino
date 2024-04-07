@@ -1,7 +1,7 @@
 #include <si5351mcu.h>
 #include <FastLED.h> // You must include FastLED version 3.002.006. This library allows communication with each LED
 
-// #define DEBUG
+#define DEBUG
 /* MACROS */
 #ifdef DEBUG
 #define DEBUG_DO(_x) (_x)
@@ -30,14 +30,14 @@
 /* EQ CONFIG */
 #define EQ_BANDS    (14)
 #define NOISECOMP   (70)
-#define GAIN        (1.0)
+#define GAIN        (1.2)
 #define EQ_DELTA    (5.0)
 
 /* LED CONFIG */
 #define ROWS                (23)
 #define COLUMNS             (12)
 #define AMOUNT_TRIMMED      (3)
-#define DEFAULT_BRIGHT      (1)
+#define DEFAULT_BRIGHT      (4)
 #define BRIGHT_HYSTERESIS   (1)
 #define PEAK_INDICATOR_TIMEOUT  (25)
 
@@ -89,7 +89,7 @@ void setup()
     pinMode(RESET_PIN, OUTPUT);
 
     /* LED matrix init */
-    setColorMatrix(INVERTED_COLOR);
+    setColorMatrix(DEFAULT_COLOR);
 
     DEBUG_DO(Serial.println("init completed"));
 }
@@ -162,7 +162,7 @@ void defaultColor()
     for (int col = 0; col < COLUMNS; ++col) {
         for (int row = 0; row < ROWS; ++row) {
             color_matrix[col][row] = 
-                (row < 14) ? CRGB::Cyan : (row < 20 ? CRGB::Magenta : CRGB::Yellow);
+                (row < 11) ? CRGB::Cyan : (row < 18 ? CRGB::Magenta : CRGB::Yellow);
         }
     }
 }
@@ -172,7 +172,7 @@ void invertedColor()
     for (int col = 0; col < COLUMNS; ++col) {
         for (int row = 0; row < ROWS; ++row) {
             color_matrix[col][row] = 
-                (row < 14) ? CRGB::Cyan : (row < 20 ? CRGB::Yellow : CRGB::Magenta);
+                (row < 11) ? CRGB::Cyan : (row < 18 ? CRGB::Yellow : CRGB::Magenta);
         }
     }
 }
@@ -188,7 +188,7 @@ void verticalGradientColor()
             color_matrix[col][row] = CHSV((uint8_t)curr_hue, 255, 255);
         }
 
-        curr_hue += (end_hue - start_hue) / COLUMNS;
+        curr_hue += (end_hue - start_hue) / ROWS;
     }
 }
 
@@ -203,7 +203,7 @@ void horizontalGradientColor()
             color_matrix[col][row] = CHSV((uint8_t)curr_hue, 255, 255);
         }
 
-        curr_hue += (end_hue - start_hue) / ROWS;
+        curr_hue += (end_hue - start_hue) / COLUMNS;
     }
 }
 
@@ -261,8 +261,8 @@ void updateLEDMatrix()
 int getColumnHeight(int column) {
     /* This is a 14 -> 12 band convertor */
     float current, previous, value = 0;
-    // float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.06);
-    float alpha = 0.45;
+    // float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 0.9, 0.06);
+    float alpha = 0.4;
 
     previous = prev_column_values[column];
     current = MSGEQ_Bands[column + 1];
