@@ -89,7 +89,7 @@ void setup()
     pinMode(RESET_PIN, OUTPUT);
 
     /* LED matrix init */
-    setColorMatrix(DEFAULT_COLOR);
+    setColorMatrix(INVERTED_COLOR);
 
     DEBUG_DO(Serial.println("init completed"));
 }
