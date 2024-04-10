@@ -1,5 +1,5 @@
 #include <si5351mcu.h>
-#include <FastLED.h> // You must include FastLED version 3.002.006. This library allows communication with each LED
+#include <FastLED.h>
 
 #define DEBUG
 /* MACROS */
@@ -18,10 +18,10 @@
 #define DIGITAL(x)  (x)
 
 /* PINS */
-#define RESET_PIN   DIGITAL(2)      // Pin to instruct MSGEQ7 to return to band zero and inspect it. Default Pin is 7. Default Pin on SpeckyBoard is 6.
-#define STROBE_PIN  DIGITAL(3)      // Pin to instruct MSGEQ7 IC's to inspect next band (band 0 thru 6). Default Pin is 6. Default Pin on SpeckyBoard is 7.
+#define RESET_PIN   DIGITAL(2)      // Pin to instruct MSGEQ7 to return to band zero and inspect it
+#define STROBE_PIN  DIGITAL(3)      // Pin to instruct MSGEQ7 IC's to inspect next band (band 0 thru 6)
 #define HBEAT_PIN   DIGITAL(4)      // Pin for the hearbteat LED
-#define DATA_PIN    DIGITAL(5)      // Pin for serial communication with LED string. This pin directs data thru termination resistor R13 on my 'SPECKY-BOARD'.
+#define DATA_PIN    DIGITAL(5)      // Pin for serial communication with LED string
 #define MSGEQ0_PIN  ANALOG(0)
 #define MSGEQ1_PIN  ANALOG(1)
 #define BRIGHT_PIN  ANALOG(2)
@@ -34,11 +34,11 @@
 #define EQ_DELTA    (5.0)
 
 /* LED CONFIG */
-#define ROWS                (23)
-#define COLUMNS             (12)
-#define AMOUNT_TRIMMED      (3)
-#define DEFAULT_BRIGHT      (4)
-#define BRIGHT_HYSTERESIS   (25)
+#define ROWS                    (23)
+#define COLUMNS                 (12)
+#define AMOUNT_TRIMMED          (3)
+#define DEFAULT_BRIGHT          (4)
+#define BRIGHT_HYSTERESIS       (25)
 #define PEAK_INDICATOR_TIMEOUT  (25)
 
 enum color_effect {
@@ -59,8 +59,7 @@ unsigned int peak_indicators_timeout[COLUMNS] = {0};
 float prev_column_values[COLUMNS] = {0};
 bool g_peak_indicators_enabled = false;
 int g_curr_bright_analog = 0;
-
-int curr_brightness = DEFAULT_BRIGHT;
+int g_curr_brightness = DEFAULT_BRIGHT;
 
 /* ----------------------------------- SETUP ----------------------------------- */
 
@@ -131,7 +130,7 @@ void checkAndUpdateBrightness()
 
 void updateBrightness(int brightness) 
 {
-    curr_brightness = brightness;
+    g_curr_brightness = brightness;
     FastLED.setBrightness(brightness);
 }
 
@@ -315,7 +314,7 @@ void printBandPrologue()
         DEBUG_DO(Serial.print("--"));
         DEBUG_DO(Serial.print(loop_counter));
         DEBUG_DO(Serial.print("-- Brightness: "));
-        DEBUG_DO(Serial.print(curr_brightness));
+        DEBUG_DO(Serial.print(g_curr_brightness));
         DEBUG_DO(Serial.println());
     }
 }
