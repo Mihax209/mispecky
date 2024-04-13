@@ -36,7 +36,7 @@
 /* LED CONFIG */
 #define ROWS                    (23)
 #define COLUMNS                 (12)
-#define AMOUNT_TRIMMED          (3)
+#define AMOUNT_TRIMMED          (4)
 #define DEFAULT_BRIGHT          (4)
 #define BRIGHT_HYSTERESIS       (25)
 #define PEAK_INDICATOR_TIMEOUT  (25)
@@ -246,7 +246,7 @@ void updateLEDMatrix()
     int ignore_cnt = 0;
     for (int col = 0; col < COLUMNS; ++col) {
         for (int row = 0; row < ROWS; ++row) {
-            int flat_index = (col * ROWS) + row - 3;
+            int flat_index = (col * ROWS) + row - AMOUNT_TRIMMED;
 
             if (flat_index >= 0) {
                 fastLED_matrix[flat_index] =
