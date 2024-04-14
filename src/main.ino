@@ -1,7 +1,8 @@
 #include <si5351mcu.h>
 #include <FastLED.h>
 
-#define DEBUG
+// #define DEBUG
+
 /* MACROS */
 #ifdef DEBUG
 #define DEBUG_DO(_x) (_x)
@@ -9,7 +10,7 @@
 #define DEBUG_DO(_x)
 #endif
 
-#define PRINT_INTERVAL (15)
+#define PRINT_INTERVAL (60)
 
 #define LENOF(_arr) ((sizeof(_arr)) / (sizeof((_arr)[0])))
 
@@ -38,7 +39,7 @@
 #define COLUMNS                 (12)
 #define AMOUNT_TRIMMED          (4)
 #define DEFAULT_BRIGHT          (1)
-#define BRIGHT_HYSTERESIS       (25)
+#define MAX_BRIGHTNESS          (35)
 #define PEAK_INDICATOR_TIMEOUT  (25)
 
 enum color_effect {
@@ -46,6 +47,10 @@ enum color_effect {
     INVERTED_COLOR,
     VERTICAL_GRADIENT,
     HORITZONTAL_GRADIENT,
+};
+
+enum serial_commands {
+    BRIGHTNESS_COMMAND='B'
 };
 
 /* GLOBAL VARIABLES */
@@ -65,7 +70,7 @@ int g_curr_brightness = DEFAULT_BRIGHT;
 
 void setup()
 {
-    DEBUG_DO(Serial.begin(115200));
+    Serial.begin(115200);
     DEBUG_DO(Serial.println("Start of init"));
 
     /* Clock generator init */
@@ -99,7 +104,7 @@ void setup()
 unsigned long loop_counter = 0;
 void loop()
 {
-    // checkAndUpdateBrightness();
+    checkSerial();
     readMSGEQ7();
     updateLEDMatrix();
 
@@ -115,23 +120,51 @@ void loop()
 
 /* ----------------------------------- FUNCTIONS ----------------------------------- */
 
-void checkAndUpdateBrightness()
+void checkSerial()
 {
-    int bright_analog = analogRead(BRIGHT_PIN);
-    if ((bright_analog > g_curr_bright_analog + BRIGHT_HYSTERESIS) ||
-        (bright_analog < g_curr_bright_analog - BRIGHT_HYSTERESIS)) {
-        g_curr_bright_analog = bright_analog;
+    if (Serial.available() <= 0) {
+        return;
     }
-    
-    int new_brightness = map(g_curr_bright_analog, 0, 1023, 0, 35);
+
+    String input_string = Serial.readStringUntil('\n');
+
+    if (input_string.charAt(1) != ' ') {
+        Serial.println("ERROR: invalid command format");
+        return;
+    }
+
+    char command_char = input_string.charAt(0);
+    String command_data = input_string.substring(2);
+    switch (command_char)
+    {
+    case BRIGHTNESS_COMMAND:
+        checkAndUpdateBrightness(command_data);
+        break;
+    default:
+        Serial.print("Invalid command: "); Serial.println(command_char);
+    }
+}
+
+void checkAndUpdateBrightness(String& value_str)
+{
+    int value = atoi(value_str.c_str());
+    if ((value > 100) || (value < 0)) {
+        Serial.print("ERROR: brightness should be between 0 and 100 (got ");
+        Serial.print(value); Serial.println(")");
+        return;
+    }
+
+    int new_brightness = (int)map(value, 0, 100, 0, MAX_BRIGHTNESS);
 
     updateBrightness(new_brightness);
 }
 
-void updateBrightness(int brightness) 
+void updateBrightness(int brightness)
 {
     g_curr_brightness = brightness;
     FastLED.setBrightness(brightness);
+    DEBUG_DO(Serial.print("Brightness updated to: "));
+    DEBUG_DO(Serial.println(brightness));
 }
 
 void setColorMatrix(enum color_effect effect) 
@@ -310,7 +343,7 @@ bool shouldPrint()
 void printBandPrologue()
 {
     if (shouldPrint()) {
-        DEBUG_DO(Serial.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"));
+        DEBUG_DO(Serial.print("\n\n\n\n\n\n"));
         DEBUG_DO(Serial.print("--"));
         DEBUG_DO(Serial.print(loop_counter));
         DEBUG_DO(Serial.print("-- Brightness: "));
