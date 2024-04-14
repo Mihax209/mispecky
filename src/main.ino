@@ -24,8 +24,8 @@
 #define DATA_PIN    DIGITAL(5)      // Pin for serial communication with LED string
 #define MSGEQ0_PIN  ANALOG(0)
 #define MSGEQ1_PIN  ANALOG(1)
-#define BRIGHT_PIN  ANALOG(2)
-#define SMOOTH_PIN  ANALOG(3)
+#define BRIGHT_PIN  ANALOG(4)
+#define SMOOTH_PIN  ANALOG(2)
 
 /* EQ CONFIG */
 #define EQ_BANDS    (14)
@@ -37,7 +37,7 @@
 #define ROWS                    (23)
 #define COLUMNS                 (12)
 #define AMOUNT_TRIMMED          (4)
-#define DEFAULT_BRIGHT          (4)
+#define DEFAULT_BRIGHT          (1)
 #define BRIGHT_HYSTERESIS       (25)
 #define PEAK_INDICATOR_TIMEOUT  (25)
 
@@ -99,7 +99,7 @@ void setup()
 unsigned long loop_counter = 0;
 void loop()
 {
-    checkAndUpdateBrightness();
+    // checkAndUpdateBrightness();
     readMSGEQ7();
     updateLEDMatrix();
 
@@ -262,8 +262,8 @@ void updateLEDMatrix()
 int getColumnHeight(int column) {
     /* This is a 14 -> 12 band convertor */
     float current, previous, value = 0;
-    // float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 0.9, 0.06);
-    float alpha = 0.4;
+    float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.1);
+    // float alpha = 0.4;
 
     previous = prev_column_values[column];
     current = MSGEQ_Bands[column + 1];
