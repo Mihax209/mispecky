@@ -1,7 +1,8 @@
+#include <Arduino.h>
 #include <si5351mcu.h>
 #include <FastLED.h>
 
-// #define DEBUG
+#define DEBUG
 
 /* MACROS */
 #ifdef DEBUG
@@ -65,6 +66,24 @@ float prev_column_values[COLUMNS] = {0};
 bool g_peak_indicators_enabled = false;
 int g_curr_bright_analog = 0;
 int g_curr_brightness = DEFAULT_BRIGHT;
+
+/* Function declarations */
+void checkSerial();
+void checkAndUpdateBrightness(String& value_str);
+void updateBrightness(int brightness);
+void setColorMatrix(enum color_effect effect) ;
+void defaultColor();
+void invertedColor();
+void verticalGradientColor();
+void horizontalGradientColor();
+void updateLEDMatrix();
+
+int getColumnHeight(int column);
+void readMSGEQ7(void);
+bool shouldPrint();
+void printBandPrologue();
+void printBandValue(int band, int value);
+float mapToFloat(int value, int in_min, int in_max, float out_min, float out_max);
 
 /* ----------------------------------- SETUP ----------------------------------- */
 
@@ -311,7 +330,6 @@ int getColumnHeight(int column) {
 
     return min(ROWS, (int)value);
 }
-
 
 void readMSGEQ7(void)
 {
