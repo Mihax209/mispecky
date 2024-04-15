@@ -2,7 +2,7 @@
 #include <si5351mcu.h>
 #include <FastLED.h>
 
-#define DEBUG
+// #define DEBUG
 
 /* MACROS */
 #ifdef DEBUG
@@ -89,7 +89,7 @@ float mapToFloat(int value, int in_min, int in_max, float out_min, float out_max
 
 void setup()
 {
-    Serial.begin(115200);
+    Serial.begin(57600);
     DEBUG_DO(Serial.println("Start of init"));
 
     /* Clock generator init */
@@ -146,6 +146,8 @@ void checkSerial()
     }
 
     String input_string = Serial.readStringUntil('\n');
+    DEBUG_DO(Serial.print("got input: "));
+    DEBUG_DO(Serial.println(input_string));
 
     if (input_string.charAt(1) != ' ') {
         Serial.println("ERROR: invalid command format");
@@ -154,6 +156,12 @@ void checkSerial()
 
     char command_char = input_string.charAt(0);
     String command_data = input_string.substring(2);
+    command_data.trim();
+    if (command_data.length() == 0) {
+        Serial.println("ERROR: no command data received\n");
+        return;
+    }
+
     switch (command_char)
     {
     case BRIGHTNESS_COMMAND:
@@ -174,6 +182,10 @@ void checkAndUpdateBrightness(String& value_str)
     }
 
     int new_brightness = (int)map(value, 0, 100, 0, MAX_BRIGHTNESS);
+
+    if ((new_brightness == 0) && (value > 0)) {
+        new_brightness++;
+    }
 
     updateBrightness(new_brightness);
 }
@@ -295,7 +307,6 @@ void updateLEDMatrix()
         }
     }
 
-    int ignore_cnt = 0;
     for (int col = 0; col < COLUMNS; ++col) {
         for (int row = 0; row < ROWS; ++row) {
             int flat_index = (col * ROWS) + row - AMOUNT_TRIMMED;
@@ -325,7 +336,7 @@ int getColumnHeight(int column) {
     }
     current /= EQ_DELTA;
 
-    value = (current * alpha) + (prev_column_values[column] * (1.0-alpha));
+    value = (current * alpha) + (previous * (1.0-alpha));
     prev_column_values[column] = value;
 
     return min(ROWS, (int)value);
