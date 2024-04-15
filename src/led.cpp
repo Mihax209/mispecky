@@ -5,6 +5,9 @@
 #include <spectrum.h>
 #include <led.h>
 
+#define SMOOTHNESS_MIN  (1-0.5)
+#define SMOOTHNESS_MAX  (1-0.98)
+
 /* PRIVATE FUNCTIONS */
 int getColumnHeight(int column);
 void printColumnHeight(int col, int height);
@@ -86,11 +89,10 @@ void LED_updateLEDMatrix()
 }
 
 /* NOTE: THIS WILL NEED TO BE CHANGED ACCRODING TO AMOUNT OF COLUMNS */
+/* This is a 14 -> 12 band convertor */
 int getColumnHeight(int column) {
-    /* This is a 14 -> 12 band convertor */
     float current, previous, value = 0;
-    float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, 1.0, 0.1);
-    // float alpha = 0.4;
+    float alpha = mapToFloat(analogRead(SMOOTH_PIN), 0, 1023, SMOOTHNESS_MIN, SMOOTHNESS_MAX);
 
     previous = prev_column_values[column];
     current = SPECTRUM_getBandValue(column + 1);
