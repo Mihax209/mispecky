@@ -2,7 +2,7 @@
 
 #include <limits.h>
 
-#define DEBUG
+// #define DEBUG
 
 /* DEBUG MACROS */
 #define PRINT_INTERVAL (60)
@@ -39,7 +39,7 @@ extern unsigned long global_loop_counter;
 /* EQ CONFIG */
 #define EQ_BANDS    (14)
 #define NOISECOMP   (70)
-#define GAIN        (1.2)
+#define GAIN        (1.3)
 #define EQ_DELTA    (5.0)
 
 /* LED CONFIG */
