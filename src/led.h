@@ -1,8 +1,8 @@
 #pragma once
 
 enum color_effect {
-    DEFAULT_COLOR = 0,
-    INVERTED_COLOR,
+    INVERTED_COLOR = 0,
+    DEFAULT_COLOR,
     VERTICAL_GRADIENT,
     HORITZONTAL_GRADIENT,
     EFFECTS_COUNT,
