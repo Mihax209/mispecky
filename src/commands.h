@@ -1,8 +1,8 @@
 #pragma once
 
 enum serial_commands {
-    BRIGHTNESS_COMMAND='B'
+    BRIGHTNESS_COMMAND='B',
+    EFFECT_COMMAND='E',
 };
 
 void COMMANDS_checkSerialCommands();
-void checkAndUpdateBrightness(String& value_str);

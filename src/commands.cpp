@@ -8,6 +8,9 @@
 #define SUCCESS_PRINT   "ACK"
 #define ERROR_PRINT     "ERROR"
 
+void handleBrightnessCommand(String& value_str);
+void handleEffectCommand(String& value_str);
+
 void COMMANDS_checkSerialCommands()
 {
     if (Serial.available() <= 0) {
@@ -27,21 +30,24 @@ void COMMANDS_checkSerialCommands()
     String command_data = input_string.substring(2);
     command_data.trim();
     if (command_data.length() == 0) {
-        Serial.println(ERROR_PRINT": no command data received\n");
+        Serial.println(ERROR_PRINT": no command data received");
         return;
     }
 
     switch (command_char)
     {
     case BRIGHTNESS_COMMAND:
-        checkAndUpdateBrightness(command_data);
+        handleBrightnessCommand(command_data);
+        break;
+    case EFFECT_COMMAND:
+        handleEffectCommand(command_data);
         break;
     default:
         Serial.print("Invalid command: "); Serial.println(command_char);
     }
 }
 
-void checkAndUpdateBrightness(String& value_str)
+void handleBrightnessCommand(String& value_str)
 {
     int value = atoi(value_str.c_str());
     if ((value > 100) || (value < 0)) {
@@ -58,5 +64,20 @@ void checkAndUpdateBrightness(String& value_str)
 
     LED_updateBrightness(new_brightness);
 
-    Serial.println(SUCCESS_PRINT);
+    Serial.print(SUCCESS_PRINT": "); Serial.println(value);
+}
+
+void handleEffectCommand(String& value_str)
+{
+    int value = atoi(value_str.c_str());
+    if ((value >= EFFECTS_COUNT) || (value < 0)) {
+        Serial.print(ERROR_PRINT": effect should be between 0 and");
+        Serial.print(EFFECTS_COUNT); Serial.print(" (got ");
+        Serial.print(value); Serial.println(")");
+        return;
+    }
+
+    LED_setColorMatrix((color_effect)value);
+
+    Serial.print(SUCCESS_PRINT": "); Serial.println(value);
 }
