@@ -5,6 +5,9 @@
 #include <led.h>
 #include <commands.h>
 
+#define SUCCESS_PRINT   "ACK"
+#define ERROR_PRINT     "ERROR"
+
 void COMMANDS_checkSerialCommands()
 {
     if (Serial.available() <= 0) {
@@ -16,7 +19,7 @@ void COMMANDS_checkSerialCommands()
     DEBUG_DO(Serial.println(input_string));
 
     if (input_string.charAt(1) != ' ') {
-        Serial.println("ERROR: invalid command format");
+        Serial.println(ERROR_PRINT": invalid command format");
         return;
     }
 
@@ -24,7 +27,7 @@ void COMMANDS_checkSerialCommands()
     String command_data = input_string.substring(2);
     command_data.trim();
     if (command_data.length() == 0) {
-        Serial.println("ERROR: no command data received\n");
+        Serial.println(ERROR_PRINT": no command data received\n");
         return;
     }
 
@@ -42,7 +45,7 @@ void checkAndUpdateBrightness(String& value_str)
 {
     int value = atoi(value_str.c_str());
     if ((value > 100) || (value < 0)) {
-        Serial.print("ERROR: brightness should be between 0 and 100 (got ");
+        Serial.print(ERROR_PRINT": brightness should be between 0 and 100 (got ");
         Serial.print(value); Serial.println(")");
         return;
     }
@@ -54,4 +57,6 @@ void checkAndUpdateBrightness(String& value_str)
     }
 
     LED_updateBrightness(new_brightness);
+
+    Serial.println(SUCCESS_PRINT);
 }
