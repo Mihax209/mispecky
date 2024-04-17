@@ -97,7 +97,7 @@ int getColumnHeight(int column) {
     previous = prev_column_values[column];
     current = SPECTRUM_getBandValue(column + 1);
     if (column == 0) {
-        // Bass average with invisible band
+        // Bass max value with truncated band
         current = max(current, SPECTRUM_getBandValue(0));
     }
     current /= EQ_DELTA;
