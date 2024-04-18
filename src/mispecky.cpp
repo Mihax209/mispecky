@@ -24,7 +24,7 @@ void setup()
     SPECTRUM_init();
 
     LED_init();
-    LED_setColorMatrix(INVERTED_COLOR);
+    LED_setColorMatrix(DEFAULT_COLOR);
 
     /* pin configurations */
     pinMode(HBEAT_PIN, OUTPUT);

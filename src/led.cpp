@@ -11,9 +11,7 @@
 /* PRIVATE FUNCTIONS */
 int getColumnHeight(int column);
 void printColumnHeight(int col, int height);
-void defaultColor();
-void invertedColor();
-void setLMHColorMatrix(unsigned long low_color, unsigned long mid_color, unsigned long high_color);
+void setLMHColorMatrix(CRGB low_color, CRGB mid_color, CRGB high_color);
 void verticalGradientColor();
 void horizontalGradientColor();
 float mapToFloat(int value, int in_min, int in_max, float out_min, float out_max);
@@ -102,10 +100,10 @@ void LED_setColorMatrix(enum color_effect effect)
 {
     switch (effect) {
     case DEFAULT_COLOR:
-        defaultColor();
+        setLMHColorMatrix(CRGB::Cyan, CRGB::Yellow, CRGB::Magenta);
         break;
-    case INVERTED_COLOR:
-        invertedColor();
+    case CALM_COLOR:
+        setLMHColorMatrix(CRGB(0x4a2003), CRGB(0x082f0b), CRGB(0x2d0a22));
         break;
     case VERTICAL_GRADIENT:
         verticalGradientColor();
@@ -117,27 +115,17 @@ void LED_setColorMatrix(enum color_effect effect)
         DEBUG_DO(Serial.print("ERROR: got to updateColorMatrix with effect num: "));
         DEBUG_DO(Serial.println(effect));
 
-        defaultColor();
+        setLMHColorMatrix(CRGB::Cyan, CRGB::Yellow, CRGB::Magenta);
         break;
     }
 }
 
 void LED_setCustomColorMatrix(unsigned long low_color, unsigned long mid_color, unsigned long high_color)
 {
-    setLMHColorMatrix(low_color, mid_color, high_color);
+    setLMHColorMatrix((CRGB)low_color, (CRGB)mid_color, (CRGB)high_color);
 }
 
-void defaultColor()
-{
-    setLMHColorMatrix(CRGB::Cyan, CRGB::Magenta, CRGB::Yellow);
-}
-
-void invertedColor()
-{
-    setLMHColorMatrix(CRGB::Cyan, CRGB::Yellow, CRGB::Magenta);
-}
-
-void setLMHColorMatrix(unsigned long low_color, unsigned long mid_color, unsigned long high_color)
+void setLMHColorMatrix(CRGB low_color, CRGB mid_color, CRGB high_color)
 {
     for (int col = 0; col < COLUMNS; ++col) {
         for (int row = 0; row < ROWS; ++row) {
