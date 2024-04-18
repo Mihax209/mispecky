@@ -9,6 +9,15 @@ enum color_effect {
 };
 
 
+/* LED CONFIG */
+#define ROWS                    (23)
+#define COLUMNS                 (12)
+#define AMOUNT_TRIMMED          (4)
+#define DEFAULT_BRIGHT          (1)
+#define MAX_BRIGHTNESS          (35)
+#define PEAK_INDICATOR_TIMEOUT  (25)
+
+
 void LED_init();
 void LED_updateBrightness(int brightness);
 void LED_updateLEDMatrix();

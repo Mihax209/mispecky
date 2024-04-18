@@ -35,17 +35,3 @@ extern unsigned long global_loop_counter;
 #define MSGEQ1_PIN  ANALOG(1)
 #define BRIGHT_PIN  ANALOG(4)
 #define SMOOTH_PIN  ANALOG(2)
-
-/* EQ CONFIG */
-#define EQ_BANDS    (14)
-#define NOISECOMP   (70)
-#define GAIN        (1.3)
-#define EQ_DELTA    (5.0)
-
-/* LED CONFIG */
-#define ROWS                    (23)
-#define COLUMNS                 (12)
-#define AMOUNT_TRIMMED          (4)
-#define DEFAULT_BRIGHT          (1)
-#define MAX_BRIGHTNESS          (35)
-#define PEAK_INDICATOR_TIMEOUT  (25)
