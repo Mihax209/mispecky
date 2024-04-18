@@ -2,6 +2,7 @@
 
 enum color_effect {
     DEFAULT_COLOR = 0,
+    DEFAULT2_COLOR,
     CALM_COLOR,
     VERTICAL_GRADIENT,
     HORITZONTAL_GRADIENT,

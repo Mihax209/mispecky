@@ -102,6 +102,9 @@ void LED_setColorMatrix(enum color_effect effect)
     case DEFAULT_COLOR:
         setLMHColorMatrix(CRGB::Cyan, CRGB::Yellow, CRGB::Magenta);
         break;
+    case DEFAULT2_COLOR:
+        setLMHColorMatrix(CRGB(0x9f0092), CRGB(0x149106), CRGB(0x028f8a));
+        break;
     case CALM_COLOR:
         setLMHColorMatrix(CRGB(0x4a2003), CRGB(0x082f0b), CRGB(0x2d0a22));
         break;
