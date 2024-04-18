@@ -18,7 +18,7 @@ unsigned long global_loop_counter = 0;
 
 void setup()
 {
-    Serial.begin(57600);
+    Serial.begin(115200);
     DEBUG_DO(Serial.println("Start of init"));
 
     SPECTRUM_init();
