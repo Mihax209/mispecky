@@ -21,3 +21,4 @@ void LED_init();
 void LED_updateBrightness(int brightness);
 void LED_updateLEDMatrix();
 void LED_setColorMatrix(enum color_effect effect);
+void LED_setCustomColorMatrix(unsigned long low_color, unsigned long mid_color, unsigned long high_color);

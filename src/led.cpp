@@ -13,6 +13,7 @@ int getColumnHeight(int column);
 void printColumnHeight(int col, int height);
 void defaultColor();
 void invertedColor();
+void setLMHColorMatrix(unsigned long low_color, unsigned long mid_color, unsigned long high_color);
 void verticalGradientColor();
 void horizontalGradientColor();
 float mapToFloat(int value, int in_min, int in_max, float out_min, float out_max);
@@ -121,22 +122,27 @@ void LED_setColorMatrix(enum color_effect effect)
     }
 }
 
+void LED_setCustomColorMatrix(unsigned long low_color, unsigned long mid_color, unsigned long high_color)
+{
+    setLMHColorMatrix(low_color, mid_color, high_color);
+}
+
 void defaultColor()
 {
-    for (int col = 0; col < COLUMNS; ++col) {
-        for (int row = 0; row < ROWS; ++row) {
-            color_matrix[col][row] = 
-                (row < 11) ? CRGB::Cyan : (row < 18 ? CRGB::Magenta : CRGB::Yellow);
-        }
-    }
+    setLMHColorMatrix(CRGB::Cyan, CRGB::Magenta, CRGB::Yellow);
 }
 
 void invertedColor()
 {
+    setLMHColorMatrix(CRGB::Cyan, CRGB::Yellow, CRGB::Magenta);
+}
+
+void setLMHColorMatrix(unsigned long low_color, unsigned long mid_color, unsigned long high_color)
+{
     for (int col = 0; col < COLUMNS; ++col) {
         for (int row = 0; row < ROWS; ++row) {
             color_matrix[col][row] = 
-                (row < 11) ? CRGB::Cyan : (row < 18 ? CRGB::Yellow : CRGB::Magenta);
+                (row < 11) ? low_color : (row < 18 ? mid_color : high_color);
         }
     }
 }

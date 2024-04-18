@@ -10,6 +10,7 @@
 
 void handleBrightnessCommand(String& value_str);
 void handleEffectCommand(String& value_str);
+void handleCustomColorCommand(String& value_str);
 
 void COMMANDS_checkSerialCommands()
 {
@@ -41,6 +42,9 @@ void COMMANDS_checkSerialCommands()
         break;
     case EFFECT_COMMAND:
         handleEffectCommand(command_data);
+        break;
+    case CUSTOM_COLOR_COMMAND:
+        handleCustomColorCommand(command_data);
         break;
     default:
         Serial.print("Invalid command: "); Serial.println(command_char);
@@ -80,4 +84,34 @@ void handleEffectCommand(String& value_str)
     LED_setColorMatrix((color_effect)value);
 
     Serial.print(SUCCESS_PRINT": "); Serial.println(value);
+}
+
+void handleCustomColorCommand(String& value_str)
+{
+    if (value_str.length() != 20)
+    {
+        Serial.print(ERROR_PRINT": bad custom color command. Got: ");
+        Serial.println(value_str);
+        return;
+    }
+
+    unsigned long low,mid,high = 0;
+    char *p_end;
+    
+    low = strtoul(value_str.c_str(), &p_end, HEX);
+    mid = strtoul(p_end, &p_end, HEX);
+    high = strtoul(p_end, NULL, HEX);
+
+    if (low == 0 || mid == 0 || high == 0)
+    {
+        Serial.println(ERROR_PRINT": Color conversion failed");
+        return;
+    }
+
+    LED_setCustomColorMatrix(low, mid, high);
+
+    Serial.print(SUCCESS_PRINT": ");
+    Serial.print(low); Serial.print(", ");
+    Serial.print(mid); Serial.print(", ");
+    Serial.println(high);
 }
