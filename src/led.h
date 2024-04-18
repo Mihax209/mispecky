@@ -15,7 +15,6 @@ enum color_effect {
 #define AMOUNT_TRIMMED          (4)
 #define DEFAULT_BRIGHT          (1)
 #define MAX_BRIGHTNESS          (35)
-#define PEAK_INDICATOR_TIMEOUT  (25)
 
 
 void LED_init();

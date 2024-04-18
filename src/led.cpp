@@ -20,10 +20,7 @@ float mapToFloat(int value, int in_min, int in_max, float out_min, float out_max
 
 /* GLOBAL VARIABLES */
 float prev_column_values[COLUMNS] = {0};
-bool g_peak_indicators_enabled = false;
 bool lit_matrix[COLUMNS][ROWS];
-uint8_t peak_indicators[COLUMNS] = {0};
-unsigned int peak_indicators_timeout[COLUMNS] = {0};
 
 struct CRGB color_matrix[COLUMNS][ROWS];
 struct CRGB fastLED_matrix[(COLUMNS*ROWS) - (2*AMOUNT_TRIMMED)];
@@ -50,25 +47,10 @@ void LED_updateBrightness(int brightness)
 void LED_updateLEDMatrix()
 {
     for (int col = 0; col < COLUMNS; ++col) {
-        int height = min(getColumnHeight(col), ROWS);
+        unsigned int height = min(getColumnHeight(col), ROWS);
         /* light up EQ band */
-        for (int row = 0; row < ROWS; ++row) {
+        for (unsigned int row = 0; row < ROWS; ++row) {
             lit_matrix[col][row] = (row < height);
-        }
-
-        if (g_peak_indicators_enabled) {
-            /* add peak indicator */
-            if (height > peak_indicators[col] ||
-                peak_indicators_timeout[col] > PEAK_INDICATOR_TIMEOUT
-            ) {
-                peak_indicators[col] = height;
-                peak_indicators_timeout[col] = 0;
-                lit_matrix[col][peak_indicators[col]] = false;
-            }
-            else {
-                peak_indicators_timeout[col]++;
-                lit_matrix[col][peak_indicators[col]] = true;
-            }
         }
 
         DEBUG_DO(printColumnHeight(col, height));
@@ -112,8 +94,6 @@ int getColumnHeight(int column) {
 void printColumnHeight(int col, int height)
 {
     Serial.print("Column height: "); Serial.print(height);
-    Serial.print(". Peak: "); Serial.print(peak_indicators[col]);
-    Serial.print(" (T-"); Serial.print(peak_indicators_timeout[col]); Serial.println(")");
 }
 
 
