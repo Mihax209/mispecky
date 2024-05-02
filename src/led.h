@@ -15,7 +15,7 @@ enum color_effect {
 #define COLUMNS                 (12)
 #define AMOUNT_TRIMMED          (4)
 #define DEFAULT_BRIGHT          (1)
-#define MAX_BRIGHTNESS          (35)
+#define MAX_BRIGHTNESS          (80)
 
 
 void LED_init();
