@@ -30,6 +30,7 @@ static int g_curr_brightness = DEFAULT_BRIGHT;
 void LED_init()
 {
     FastLED.addLeds<WS2812B, DATA_PIN, GRB>(fastLED_matrix, LENOF(fastLED_matrix));
+    FastLED.setMaxPowerInVoltsAndMilliamps(5, 2000);
     LED_updateBrightness(DEFAULT_BRIGHT);
 }
 
