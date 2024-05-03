@@ -2,6 +2,7 @@
 MiSpecky is an arduino-based project for and LED strip audio spectrum analyzer. It uses hardware components for the audio frequency slicing, so it has incredibly fast response times, and not much software delay.
 
 (The GIF takes a few moments to load...)  
+![MiSpecky Still](media/finished/MiSpecky_still.png)
 ![MiSpecky](media/finished/MiSpecky.gif)
 
 The intention was to incorporate it into my PC's case (Fractal Design Meshify C)
